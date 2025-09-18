@@ -1,0 +1,10 @@
+./DS_Store
+videos/
+simple*/
+mpe_chk/
+mpe_tag*/
+smax_*/
+./*.pkl
+wandb/
+outputs/
+*/__pycache__/
