@@ -1,0 +1,24 @@
+# Paper-matching hyperparameters for fair comparison
+"LR": 3e-4  # Match ICRL
+"NUM_ENVS": 256  # Paper spec
+"NUM_STEPS": 10
+"TOTAL_TIMESTEPS": 2e7  # 20M steps (from paper Figure 3)
+"UPDATE_EPOCHS": 4
+"NUM_MINIBATCHES": 4
+"GAMMA": 0.99
+"GAE_LAMBDA": 0.95
+"CLIP_EPS": 0.2
+"ENT_COEF": 0.01
+"VF_COEF": 0.5
+"MAX_GRAD_NORM": 0.5
+"ACTIVATION": "tanh"
+"SEED": 1
+"ENV_NAME": "MPE_simple_facmac_3a_v1"
+"ENV_KWARGS": {}
+"score_function": "min"
+"ANNEAL_LR": True
+
+# WandB Params
+"ENTITY": "asim_awad"  # Your entity
+"PROJECT": "ICRL_Reproduction"
+"WANDB_MODE": "online"
