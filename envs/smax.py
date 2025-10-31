@@ -138,7 +138,7 @@ class SmaxEnv(Env):
         done = jp.where(won_battle, 0.0, dones['__all__'])
         done = jp.where(jp.logical_and(won_battle, steps_since_won > win_repeat), 1.0, done)
         obs = jp.where(won_battle, state.obs.at[:,-2].set(0.0), obs)
-        pipeline_state = jax.tree_map(
+        pipeline_state = jax.tree_util.tree_map(
             lambda x, y: jax.lax.select(won_battle, x, y), state.pipeline_state, mpe_state
         )
         return_state = state.replace(
