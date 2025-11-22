@@ -27,8 +27,8 @@ python train_icrl_smax.py \
   --wandb_project_name ICRL_Reproduction \
   --wandb_entity asim_awad \
   --wandb_mode online \
-  --track \
-  > logs/smax_2s3z_icrl_seed1.log 2>&1 &
+  --track 
+  # > logs/smax_2s3z_icrl_seed1.log 2>&1 &
 
 SEED1_PID=$!
 echo "Seed 1 launched (PID: $SEED1_PID)"

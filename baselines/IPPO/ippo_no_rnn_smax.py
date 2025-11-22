@@ -116,12 +116,8 @@ def unbatchify(x: jnp.ndarray, agent_list, num_envs, num_actors):
 
 # use dummy hidden state
 def make_train(config):
-    scenario = map_name_to_scenario('3m')
-#    scenario = map_name_to_scenario(config["MAP_NAME"])
-    env = HeuristicEnemySMAX(scenario=scenario, 
-                    see_enemy_actions = True, walls_cause_death = True, attack_mode = "closest",
-                    action_type = 'discrete')
-#    env = HeuristicEnemySMAX(scenario=scenario, **config["ENV_KWARGS"])
+    scenario = map_name_to_scenario(config["MAP_NAME"])
+    env = HeuristicEnemySMAX(scenario=scenario, **config["ENV_KWARGS"])
     config["NUM_ACTORS"] = env.num_agents * config["NUM_ENVS"]
     config["NUM_UPDATES"] = (
         config["TOTAL_TIMESTEPS"] // config["NUM_STEPS"] // config["NUM_ENVS"]
@@ -216,7 +212,7 @@ def make_train(config):
                 obsv, env_state, reward, done, info = jax.vmap(
                     env.step, in_axes=(0, 0, 0)
                 )(rng_step, env_state, env_act)
-                info = jax.tree_map(lambda x: x.reshape((config["NUM_ACTORS"])), info)
+                info = jax.tree_util.tree_map(lambda x: x.reshape((config["NUM_ACTORS"])), info)
                 done_batch = batchify(done, env.agents, config["NUM_ACTORS"]).squeeze()
                 transition = Transition(
                     jnp.tile(done["__all__"], env.num_agents),
@@ -401,14 +397,14 @@ def make_train(config):
             )
             train_state = update_state[0]
             metric = traj_batch.info
-            metric = jax.tree_map(
+            metric = jax.tree_util.tree_map(
                 lambda x: x.reshape(
                     (config["NUM_STEPS"], config["NUM_ENVS"], env.num_agents)
                 ),
                 traj_batch.info,
             )
             ratio_0 = loss_info[1][3].at[0,0].get().mean()
-            loss_info = jax.tree_map(lambda x: x.mean(), loss_info)
+            loss_info = jax.tree_util.tree_map(lambda x: x.mean(), loss_info)
             metric["loss"] = {
                 "total_loss": loss_info[0],
                 "value_loss": loss_info[1][0],
@@ -463,13 +459,13 @@ def make_train(config):
     return train
 
 
-@hydra.main(version_base=None, config_path="config", config_name="ippo_rnn_smax")
+@hydra.main(version_base=None, config_path="config", config_name="ippo_no_rnn_smax")
 def main(config):
     config = OmegaConf.to_container(config)
     wandb.init(
         entity=config["ENTITY"],
         project=config["PROJECT"],
-        tags=["IPPO", "RNN"],
+        tags=["IPPO", "NoRNN", "SMAX"],
         config=config,
         mode=config["WANDB_MODE"],
     )

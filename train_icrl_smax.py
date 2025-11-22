@@ -39,15 +39,15 @@ import matplotlib.pyplot as plt
 
 @dataclass
 class Args:
-    exp_name: str = os.path.basename(__file__)[: -len(".py")]
-    seed: int = 0
+    exp_name: str = "testing"
+    seed: int = 1
     torch_deterministic: bool = True
     cuda: bool = True
-    track: bool = True
-    wandb_project_name: str = "TEST_WANDB"
-    wandb_entity: str = 'chirayu-nimonkar-princeton-university'
+    track: bool = False
+    wandb_project_name: str = "ICRL_Reproduction"
+    wandb_entity: str = 'asim_awad'
     wandb_mode: str = 'offline'
-    wandb_dir: str = '/scratch/network/ss5822'
+    wandb_dir: str = '.'
     wandb_group: str = '.'
     capture_video: bool = False
     checkpoint: bool = False
@@ -293,15 +293,6 @@ if __name__ == "__main__":
         args.num_agents = env.env.num_agents
         args.num_envs_agents = args.num_envs * args.num_agents
     
-    elif args.env_id == "push_marl":
-        from envs.mpe_push_LLM import PushMPEMARL
-        env = PushMPEMARL()
-        args.obs_dim = 6  # vel(2) + landmark_pos(4)
-        args.goal_start_idx = 6  # target position starts after obs
-        args.goal_end_idx = 8   # target is 2D position
-        args.num_agents = env.env.num_agents
-        args.num_envs_agents = args.num_envs * args.num_agents
-
     elif args.env_id == "mpe_tag":
         from envs.mpe_tag import MPETagCoop
         env = MPETagCoop()
@@ -532,7 +523,7 @@ if __name__ == "__main__":
             
         #step our environment
         actions_ = jnp.reshape(actions, (-1, args.num_agents,) + actions.shape[1:])
-#        jax.debug.print("actions from first env: {}", transition_actions[0])
+        # jax.debug.print("actions from first env: {}", actions_[0][0])
         nstate = env.step(env_state, actions_)
         
         #generate an array of transitions, with shape (num_envs*num_agents,...)
@@ -589,6 +580,7 @@ if __name__ == "__main__":
             future_state = transitions.extras["future_state"]
             goal = future_state[:, args.goal_start_idx : args.goal_end_idx]
             observation = jnp.concatenate([state, goal], axis=1)
+
             avail_actions = transitions.avail_actions
 
             means, log_stds = actor.apply(actor_params, observation)

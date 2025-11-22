@@ -30,7 +30,7 @@ class Args:
     seed: int = 1
     torch_deterministic: bool = True
     cuda: bool = True
-    track: bool = True
+    track: bool = False
     wandb_project_name: str = "TEST_WANDB"
     wandb_entity: str = 'chirayu-nimonkar-princeton-university'
     wandb_mode: str = 'offline'
@@ -373,6 +373,8 @@ if __name__ == "__main__":
         )
     
     def actor_step(actor_state, env, env_state, key, extra_fields):        
+        jax.debug.print("observation in actor step: {}", env_state.obs.shape)
+        jax.debug.print("observation: {}", env_state.obs[0,-2:])
         means, log_stds = actor.apply(actor_state.params, env_state.obs)
         stds = jnp.exp(log_stds)
         actions = nn.tanh( means + stds * jax.random.normal(key, shape=means.shape, dtype=means.dtype) )

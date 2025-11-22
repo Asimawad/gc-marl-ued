@@ -43,7 +43,7 @@ class Args:
     seed: int = 1
     torch_deterministic: bool = True
     cuda: bool = True
-    track: bool = True
+    track: bool = False
     wandb_project_name: str = "TEST_WANDB"
     wandb_entity: str = 'chirayu-nimonkar-princeton-university'
     wandb_mode: str = 'offline'
@@ -493,6 +493,8 @@ if __name__ == "__main__":
         #perform inference to get actions
         keys = jax.random.split(key, args.num_agents)
         obs = jnp.reshape(env_state.obs, (-1,) + env_state.obs.shape[2:])
+        jax.debug.print("observation in actor step: {}", obs.shape)
+        jax.debug.print("observation: {}", obs[0,-2:])
         means, log_stds = actor.apply(actor_state.params, obs)
         actions = None
         transition_actions = None
@@ -564,7 +566,7 @@ if __name__ == "__main__":
         return jax.lax.scan(f, (training_state, env_state, buffer_state, key), (), length=args.num_prefill_actor_steps)[0]
 
     #modified to accomodate discrete action space
-    @jax.jit
+    # @jax.jit
     def update_actor_and_alpha(transitions, training_state, key):
         def actor_loss(actor_params, critic_params, log_alpha, transitions, key):
             obs = transitions.observation           # expected_shape = batch_size, obs_size + goal_size
@@ -573,6 +575,8 @@ if __name__ == "__main__":
             goal = future_state[:, args.goal_start_idx : args.goal_end_idx]
             observation = jnp.concatenate([state, goal], axis=1)
 
+            print("observation: ", observation[0,-2:])
+            
             means, log_stds = actor.apply(actor_params, observation)
             action = None
             log_prob = None
@@ -663,7 +667,7 @@ if __name__ == "__main__":
 
         return training_state, metrics
     
-    @jax.jit
+    # @jax.jit
     def sgd_step(carry, transitions):
         training_state, key = carry
         key, critic_key, actor_key, = jax.random.split(key, 3)
@@ -680,7 +684,7 @@ if __name__ == "__main__":
         
         return (training_state, key,), metrics
 
-    @jax.jit
+    # @jax.jit
     def training_step(training_state, env_state, buffer_state, key):
         experience_key1, experience_key2, sampling_key, training_key = jax.random.split(key, 4)
 
@@ -721,14 +725,14 @@ if __name__ == "__main__":
 
         return (training_state, env_state, buffer_state,), metrics
 
-    @jax.jit
+    # @jax.jit
     def training_epoch(
         training_state,
         env_state,
         buffer_state,
         key,
     ):  
-        @jax.jit
+        # @jax.jit
         def f(carry, unused_t):
             ts, es, bs, k = carry
             k, train_key = jax.random.split(k, 2)
@@ -779,7 +783,7 @@ if __name__ == "__main__":
 
         # update metrics, get EVAL episode returns
         metrics = evaluator.run_evaluation(training_state, metrics)
-        print(metrics)
+        # print(metrics)
 
         # update TRAINING episode returns
         # train_returns = env_state.info["returned_episode_returns"]
