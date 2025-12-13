@@ -794,33 +794,15 @@ if __name__ == "__main__":
 
         # update metrics, get EVAL episode returns
         metrics = evaluator.run_evaluation(training_state, metrics)
-        print(metrics)
+        # rint training metrics put the step number in the print statement in millions
+        print(f"Epoch {ne} - step: {ne * args.num_training_steps_per_epoch * args.env_steps_per_actor_step / 1000000}M: Training Metrics: =================================================")
+        print(f" categorical_accuracy : {metrics['training/categorical_accuracy']*100:.2f} %")
+        print(f" critic_loss : {metrics['training/critic_loss']:.4f}")
+        print(f" logits_neg : {metrics['training/logits_neg']:.4f}")
+        print(f" logits_pos : {metrics['training/logits_pos']:.4f}")
+        print(f" evaluation win_rate : {metrics['eval/win_rate']:.2f}  %")
+        print(f" =================================================\n\n")
 
-        # update TRAINING episode returns
-        # train_returns = env_state.info["returned_episode_returns"]
-        # mean_train_returns = train_returns[:, :args.num_agents].mean(axis=(0, 1))
-        # metrics["training/mean_returned_episode_returns"] = mean_train_returns
-        # print("Current Training Episode Return: ", mean_train_returns)
-
-        # make TRAINING reward plot
-        # plt.clf()
-        # plt.plot(training_episode_returns)
-        # print("Current Training Episode Return: ", training_episode_returns[-1])
-        # plt.xlabel("Updates")
-        # plt.ylabel("Returns")
-        # plt.title("ICRL-FF=MPE_TAG_FACMAC")
-        # plt.savefig(f"TRAIN_icrl_ff_MPE_TAG_FACMAC_epoch{ne}.png")
-        # plt.close()
-
-        # make EVAL reward plot
-        # plt.clf()
-        # plt.plot(eval_episode_returns)
-        # print("Current Evaluation Episode Return: ", eval_episode_returns[-1])
-        # plt.xlabel("Updates")
-        # plt.ylabel("Returns")
-        # plt.title("ICRL-FF=MPE_TAG_FACMAC")
-        # plt.savefig(f"EVAL_icrl_ff_MPE_TAG_FACMAC_epoch{ne}.png")
-        # plt.close()
 
         if args.checkpoint:
             # Save current policy and critic params.
@@ -839,8 +821,4 @@ if __name__ == "__main__":
         params = (training_state.alpha_state.params, training_state.actor_state.params, training_state.critic_state.params)
         path = f"{save_path}/final.pkl"
         save_params(path, params)
-    
-        
-# (50000000 - 1024 x 1000) / 50 x 1024 x 62 = 15        #number of actor steps per epoch (which is equal to the number of training steps)
-# 1024 x 999 / 256 = 4000                               #number of gradient steps per actor step 
-# 1024 x 62 / 4000 = 16                                 #ratio of env steps per gradient step
+        # update metrics, get EVAL episode returns

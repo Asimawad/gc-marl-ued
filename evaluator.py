@@ -14,7 +14,7 @@ def generate_unroll(actor_step, training_state, env, env_state, unroll_length, e
     def f(carry, unused_t):
         state = carry
         nstate, transition = actor_step(training_state, env, state, extra_fields=extra_fields)
-#        jax.debug.print("dist to target: {}", nstate.metrics['distance_from_target'])
+        # jax.debug.print("dist to target: {}", nstate.metrics['distance_from_target'])
         return nstate, transition
 
     final_state, data = jax.lax.scan(f, env_state, (), length=unroll_length)
@@ -50,22 +50,9 @@ class CrlEvaluator():
         eval_metrics = eval_state.info["eval_metrics"]
         eval_metrics.active_episodes.block_until_ready()
         
-        # Track episode returns
-        if "returned_episode_returns" in eval_state.info:
-            returns = eval_state.info["returned_episode_returns"]
-            # Assuming the same structure as in the original code
-            # Adjust the slicing based on your specific environment setup
-            num_adversaries = self._eval_env.env.env.env.env.num_adversaries
-            mean_returns = returns[:, :num_adversaries].mean(axis=(0, 1))
-
         epoch_eval_time = time.time() - t
         metrics = {}
-        aggregating_fns = [
-            (np.mean, ""),
-            # (np.std, "_std"),
-            # (np.max, "_max"),
-            # (np.min, "_min"),
-        ]
+        aggregating_fns = [(np.mean, ""),]
 
         for (fn, suffix) in aggregating_fns:
             metrics.update(
@@ -77,20 +64,11 @@ class CrlEvaluator():
                 }
             )
 
-        # Track episode returns
-        if "returned_episode_returns" in eval_state.info:
-            returns = eval_state.info["returned_episode_returns"]
-            # Assuming the same structure as in the original code
-            # Adjust the slicing based on your specific environment setup
-            num_adversaries = self._eval_env.env.env.env.env.num_adversaries
-            mean_returns = returns[:, :num_adversaries].mean(axis=(0, 1))
-            metrics["eval/mean_returned_episode_returns"] = mean_returns
-
         # We check in how many env there was at least one step where there was success
         if "success" in eval_metrics.episode_metrics:
-            metrics["eval/episode_success_any"] = np.mean(
+            metrics["eval/win_rate"] = np.mean(
                 eval_metrics.episode_metrics["success"] > 0.0
-            )
+            ) * 100.0
 
         metrics["eval/avg_episode_length"] = np.mean(eval_metrics.episode_steps)
         metrics["eval/epoch_eval_time"] = epoch_eval_time

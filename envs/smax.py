@@ -91,17 +91,19 @@ class SmaxEnv(Env):
         """ Run one timestep of the environment's dynamics. """
         key, key_s, key_discrete = jax.random.split(state.info["mpe_key"], 3)
         
-        # generate action dict for agents
-        if self.env.action_type == 'continuous':
-            action = action.at[:,:].set((action[:,:]+1)/2.0)
-            # action = action.at[:,:3].set((action[:,:3]+1)/2.0)
-            # action = action.at[:,3].set((action[:,3]+1)*3.0)
-            action = action.at[:,1].set(0.0)  # Set do_shoot = 1.0 AFTER the scaling
-            action = action.at[:,0].set(1.0)  # Set shoot_last_enemy to 0.0 for first agent
-        else:
-            # pi = distrax.Categorical(logits = action)
-            # action = pi.sample(seed = key_discrete)
+        # # generate action dict for agents
+        # if self.env.action_type == 'continuous':
+        #     action = action.at[:,:].set((action[:,:]+1)/2.0)
+        #     # action = action.at[:,:3].set((action[:,:3]+1)/2.0)
+        #     # action = action.at[:,3].set((action[:,3]+1)*3.0)
+        #     action = action.at[:,1].set(0.0)  # Set do_shoot = 1.0 AFTER the scaling
+        #     action = action.at[:,0].set(1.0)  # Set shoot_last_enemy to 0.0 for first agent
+        # else:
+            # Handle both discrete indices (1D) and logits (2D)
+            # action.ndim is known at trace time, so Python if works
+        if action.ndim > 1:
             action = jp.argmax(action, axis=-1)
+            # else: action is already discrete indices, use directly
 
         actions = {agent: action[i] for i, agent in enumerate(self.env.agents)}
         
@@ -132,7 +134,8 @@ class SmaxEnv(Env):
         state.metrics.update({"success": jp.where(won_battle, 1.0, 0.0)})
         
         steps_since_won = state.info['steps'] - state.info['step_won']
-        win_repeat = 5
+        # win_repeat = 5
+        win_repeat = 0
         
         reward, _ = jp.zeros(2)
         done = jp.where(won_battle, 0.0, dones['__all__'])
