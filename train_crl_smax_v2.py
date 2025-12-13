@@ -67,7 +67,7 @@ class Args:
     total_env_steps: int = 50_000_000
     num_epochs: int = 500
     num_envs: int = 256
-    num_eval_envs: int = 64
+    num_eval_envs: int = 256
     critic_lr: float = 3e-4
     batch_size: int = 256
     rep_size: int = 64

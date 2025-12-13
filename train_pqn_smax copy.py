@@ -69,21 +69,20 @@ class Args:
     # Algorithm specific arguments
     total_env_steps: int = 50_000_000
     num_epochs: int = 500
-    num_envs: int = 512  # More parallel envs for diversity (was 256)
+    num_envs: int = 256  # Parallel environments
     num_eval_envs: int = 256
-    critic_lr: float = 1e-4  # Lower LR for stability (was 3e-4)
+    critic_lr: float = 3e-4
     batch_size: int = 256  # Mini-batch size for training (InfoNCE needs small batches)
     rep_size: int = 64
     gamma: float = 0.99
     logsumexp_penalty_coeff: float = 0.1
-    max_grad_norm: float = 1.0  # Gradient clipping for stability
     
     # Target network for stability (optional for PQN, but can help)
     use_target_network: bool = True
-    target_tau: float = 0.001  # Slower target updates for stability (was 0.005)
+    target_tau: float = 0.005
 
     # Temperature for exploration
-    temperature: float = 0.0375  # Fixed temperature (like your working config)
+    temperature: float = 0.05  # Fixed temperature (like your working config)
 
     # PQN specific: how many env steps to collect before each training update
     unroll_length: int = 62  # Shorter unrolls, more frequent updates
@@ -290,10 +289,7 @@ if __name__ == "__main__":
     critic_state = TrainState.create(
         apply_fn=None,
         params=crtc_params,
-        tx=optax.chain(
-            optax.clip_by_global_norm(args.max_grad_norm),  # Gradient clipping
-            optax.adam(learning_rate=args.critic_lr),
-        ),
+        tx=optax.adam(learning_rate=args.critic_lr),
     )
 
     print(f"PQN Mode: No replay buffer, training on fresh experience")

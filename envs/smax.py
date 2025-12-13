@@ -134,8 +134,8 @@ class SmaxEnv(Env):
         state.metrics.update({"success": jp.where(won_battle, 1.0, 0.0)})
         
         steps_since_won = state.info['steps'] - state.info['step_won']
-        # win_repeat = 5
-        win_repeat = 0
+        win_repeat = 5
+        # win_repeat = 0
         
         reward, _ = jp.zeros(2)
         done = jp.where(won_battle, 0.0, dones['__all__'])
