@@ -140,7 +140,9 @@ class SA_encoder(nn.Module):
         x = normalize(x)
         x = nn.swish(x)
         # Single output representation
-        x = nn.Dense(self.rep_size, kernel_init=lecun_uniform, bias_init=bias_init)(x)
+        x = nn.Dense(self.rep_size * self.action_size, kernel_init=lecun_uniform, bias_init=bias_init)(x)
+        # reshape to (batch, action_size, rep_size)
+        x = jnp.reshape(x, (-1, self.action_size, self.rep_size))
         return x
 
 

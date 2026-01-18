@@ -14,9 +14,10 @@ python train_pqn_smax.py \
   --num_epochs 500 \
   --num_envs 256 \
   --batch_size 256 \
-  --seed 1 \
+  --seed 77 \
   --wandb_project_name ICRL_Reproduction \
   --wandb_entity asim_awad \
   --wandb_mode online \
-  --exp_name pqn_smax-win_repeat_5 \
+  --exp_name pqn_smax-baseline-4-updates-per-batch \
+  --target_tau 0.001 \
   --track 

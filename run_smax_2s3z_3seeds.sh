@@ -10,7 +10,7 @@ mkdir -p logs
 echo "Running ICRL SMAX 3s3z"
 
 python train_icrl_smax.py \
-  --smax_map_name 2s3z \
+  --smax_map_name smacv2_5_units \
   --total_env_steps 250_000_000 \
   --num_epochs 500 \
   --num_envs 256 \
@@ -20,11 +20,7 @@ python train_icrl_smax.py \
   --wandb_entity asim_awad \
   --wandb_mode online \
   --track \
-  > logs/smax_3s3z_icrl_seed1.log 2>&1 &
-
-SEED1_PID=$!
-echo "Seed 1 launched (PID: $SEED1_PID)"
-echo "Monitor: tail -f logs/smax_3s3z_icrl_seed1.log"
+#   sf logs/smax_3s3z_icrl_seed1.log"
 
 # # Wait for seed 1 to finish
 # echo "Waiting for Seed 1 to complete..."

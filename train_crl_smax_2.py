@@ -28,7 +28,7 @@ import matplotlib.pyplot as plt
 
 @dataclass
 class Args:
-    exp_name: str = "crl_no_actor"
+    exp_name: str = "crl_smax_2-sqrt-distance"
     seed: int = 1
     torch_deterministic: bool = True
     cuda: bool = True
@@ -84,14 +84,75 @@ class Args:
 
 
 
+# class SA_encoder(nn.Module):
+#     """
+#     State encoder that outputs representations for ALL actions at once.
+#     Output shape: (batch, action_size * rep_size)
+#     This allows implicit action selection via Q-value comparison.
+#     """
+#     action_size: int
+#     rep_size: int
+#     norm_type: str = "layer_norm"
+    
+#     @nn.compact
+#     def __call__(self, s: jnp.ndarray):
+#         lecun_uniform = variance_scaling(1/3, "fan_in", "uniform")
+#         bias_init = nn.initializers.zeros
+        
+#         if self.norm_type == "layer_norm":
+#             normalize = lambda x: nn.LayerNorm()(x)
+#         else:
+#             normalize = lambda x: x
+
+#         x = nn.Dense(1024, kernel_init=lecun_uniform, bias_init=bias_init)(s)
+#         x = normalize(x)
+#         x = nn.swish(x)
+#         x = nn.Dense(1024, kernel_init=lecun_uniform, bias_init=bias_init)(x)
+#         x = normalize(x)
+#         x = nn.swish(x)
+#         x = nn.Dense(1024, kernel_init=lecun_uniform, bias_init=bias_init)(x)
+#         x = normalize(x)
+#         x = nn.swish(x)
+#         x = nn.Dense(1024, kernel_init=lecun_uniform, bias_init=bias_init)(x)
+#         x = normalize(x)
+#         x = nn.swish(x)
+#         # Output: (batch, action_size * rep_size)
+#         x = nn.Dense(self.action_size * self.rep_size, kernel_init=lecun_uniform, bias_init=bias_init)(x)
+#         return x
+
+
+class ActionHead(nn.Module):
+    """Single action head - transforms shared features into action-specific representation."""
+    rep_size: int
+    
+    @nn.compact
+    def __call__(self, x: jnp.ndarray):
+        lecun_uniform = variance_scaling(1/3, "fan_in", "uniform")
+        bias_init = nn.initializers.zeros
+        # Each action gets its own 2-layer MLP head
+        x = nn.Dense(256, kernel_init=lecun_uniform, bias_init=bias_init)(x)
+        x = nn.LayerNorm()(x)
+        x = nn.swish(x)
+        x = nn.Dense(self.rep_size, kernel_init=lecun_uniform, bias_init=bias_init)(x)
+        return x
+
+
 class SA_encoder(nn.Module):
     """
-    State encoder that outputs representations for ALL actions at once.
-    Output shape: (batch, action_size * rep_size)
-    This allows implicit action selection via Q-value comparison.
+    State encoder with SEPARATE OUTPUT HEADS per action.
+    
+    Architecture:
+    - Shared trunk processes state features
+    - Each action has its OWN learnable head (not just a reshaped single output)
+    
+    This prevents representation collapse because each action has independent
+    parameters in the final transformation, forcing diverse representations.
+    
+    Input: state (batch_size, obs_dim)
+    Output: (batch_size, action_size, rep_size)
     """
-    action_size: int
     rep_size: int
+    action_size: int
     norm_type: str = "layer_norm"
     
     @nn.compact
@@ -104,6 +165,7 @@ class SA_encoder(nn.Module):
         else:
             normalize = lambda x: x
 
+        # Shared trunk - extract state features
         x = nn.Dense(1024, kernel_init=lecun_uniform, bias_init=bias_init)(s)
         x = normalize(x)
         x = nn.swish(x)
@@ -113,13 +175,27 @@ class SA_encoder(nn.Module):
         x = nn.Dense(1024, kernel_init=lecun_uniform, bias_init=bias_init)(x)
         x = normalize(x)
         x = nn.swish(x)
-        x = nn.Dense(1024, kernel_init=lecun_uniform, bias_init=bias_init)(x)
+        x = nn.Dense(512, kernel_init=lecun_uniform, bias_init=bias_init)(x)
         x = normalize(x)
         x = nn.swish(x)
-        # Output: (batch, action_size * rep_size)
-        x = nn.Dense(self.action_size * self.rep_size, kernel_init=lecun_uniform, bias_init=bias_init)(x)
-        return x
-
+        # x is now (batch_size, 512) - shared features
+        
+        # Use nn.vmap to create action_size independent heads efficiently
+        # - variable_axes={'params': 0} means each action gets its own params
+        # - split_rngs={'params': True} ensures different init for each head
+        # - This is more JAX-idiomatic than a Python for loop
+        VmappedHead = nn.vmap(
+            ActionHead,
+            variable_axes={'params': 0},
+            split_rngs={'params': True},
+            in_axes=None,  # Same input x for all heads
+            out_axes=1,    # Stack outputs along axis 1
+            axis_size=self.action_size,
+        )
+        
+        # Single call: creates action_size heads, each with separate params
+        # Output: (batch_size, action_size, rep_size)
+        return VmappedHead(rep_size=self.rep_size, name="action_heads")(x)
 
 class G_encoder(nn.Module):
     """Goal encoder - same as original."""
@@ -343,7 +419,7 @@ if __name__ == "__main__":
         g_repr = g_repr[:, None, :]
         
         # Compute negative L2 distance as Q-values: (batch, action_size)
-        # logits = -jnp.sqrt(jnp.sum((s_repr - g_repr) ** 2, axis=-1))
+        logits = -jnp.sqrt(jnp.sum((s_repr - g_repr) ** 2, axis=-1))
         # logits = -jnp.sum((s_repr - g_repr) ** 2, axis=-1)
 
         return logits

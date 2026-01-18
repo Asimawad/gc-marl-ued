@@ -40,8 +40,8 @@ from buffer import TrajectoryUniformSamplingQueue
 
 @dataclass
 class Args:
-    exp_name: str = "pqn_smax"
-    seed: int = 1
+    exp_name: str = "pqn_smax_action_heads"
+    seed: int = 77
     torch_deterministic: bool = True
     cuda: bool = True
     track: bool = False
@@ -73,7 +73,7 @@ class Args:
     num_eval_envs: int = 256
     critic_lr: float = 1e-4  # Lower LR for stability (was 3e-4)
     batch_size: int = 256  # Mini-batch size for training (InfoNCE needs small batches)
-    rep_size: int = 64
+    rep_size: int = 32
     gamma: float = 0.99
     logsumexp_penalty_coeff: float = 0.1
     max_grad_norm: float = 1.0  # Gradient clipping for stability
@@ -83,7 +83,7 @@ class Args:
     target_tau: float = 0.001  # Slower target updates for stability (was 0.005)
 
     # Temperature for exploration
-    temperature: float = 0.0375  # Fixed temperature (like your working config)
+    temperature: float = 0.05  # Fixed temperature (like your working config)
 
     # PQN specific: how many env steps to collect before each training update
     unroll_length: int = 62  # Shorter unrolls, more frequent updates
@@ -99,40 +99,118 @@ class Args:
 
 class SA_encoder(nn.Module):
     """
-    State-Action encoder with explicit action encoding.
-    LayerNorm is crucial for PQN stability!
+    State encoder that outputs representations for ALL actions at once.
+    
+    Architecture:
+    - Shared trunk processes state features
+    - Concatenate with one-hot action vectors
+    - Shared head processes each (state, action) pair
+    
+    The one-hot action vectors provide the distinguishing signal that prevents
+    representation collapse - each action gets different input.
+    
+    Input: state (batch_size, obs_dim)
+    Output: (batch_size, action_size, rep_size)
     """
     rep_size: int
-    norm_type: str = "layer_norm"  # Important for PQN!
+    action_size: int
+    norm_type: str = "layer_norm"
     
     @nn.compact
-    def __call__(self, s: jnp.ndarray, a: jnp.ndarray):
+    def __call__(self, s: jnp.ndarray):
         lecun_uniform = variance_scaling(1/3, "fan_in", "uniform")
         bias_init = nn.initializers.zeros
         
-        # LayerNorm is key for PQN stability
         if self.norm_type == "layer_norm":
             normalize = lambda x: nn.LayerNorm()(x)
         else:
             normalize = lambda x: x
 
-        x = jnp.concatenate([s, a], axis=-1)
+        # Shared trunk - extract state features
+        x = nn.Dense(1024, kernel_init=lecun_uniform, bias_init=bias_init)(s)
+        x = normalize(x)
+        x = nn.swish(x)
+        x = nn.Dense(1024, kernel_init=lecun_uniform, bias_init=bias_init)(x)
+        x = normalize(x)
+        x = nn.swish(x)
+        x = nn.Dense(1024, kernel_init=lecun_uniform, bias_init=bias_init)(x)
+        x = normalize(x)
+        x = nn.swish(x)
+        x = nn.Dense(1024, kernel_init=lecun_uniform, bias_init=bias_init)(x)
+        x = normalize(x)
+        x = nn.swish(x)
+        # x is now (batch_size, 1024)
         
-        x = nn.Dense(1024, kernel_init=lecun_uniform, bias_init=bias_init)(x)
-        x = normalize(x)
-        x = nn.swish(x)
-        x = nn.Dense(1024, kernel_init=lecun_uniform, bias_init=bias_init)(x)
-        x = normalize(x)
-        x = nn.swish(x)
-        x = nn.Dense(1024, kernel_init=lecun_uniform, bias_init=bias_init)(x)
-        x = normalize(x)
-        x = nn.swish(x)
-        x = nn.Dense(1024, kernel_init=lecun_uniform, bias_init=bias_init)(x)
-        x = normalize(x)
-        x = nn.swish(x)
-        x = nn.Dense(self.rep_size, kernel_init=lecun_uniform, bias_init=bias_init)(x)
-        return x
+        # Create one-hot action vectors: (action_size, action_size)
+        action_onehots = jnp.eye(self.action_size)
+        
+        # Expand shared features: (batch, 1024) -> (batch, action_size, 1024)
+        x_expanded = jnp.tile(x[:, None, :], (1, self.action_size, 1))
+        
+        # Expand action one-hots: (action_size, action_size) -> (batch, action_size, action_size)
+        action_onehots_expanded = jnp.tile(action_onehots[None, :, :], (x.shape[0], 1, 1))
+        
+        # Concatenate: (batch, action_size, 1024 + action_size)
+        x_with_action = jnp.concatenate([x_expanded, action_onehots_expanded], axis=-1)
+        
+        # Shared head applied to all actions (Dense broadcasts over leading dims)
+        # This is equivalent to processing each action with the same MLP
+        x_with_action = nn.Dense(1024, kernel_init=lecun_uniform, bias_init=bias_init)(x_with_action)
+        x_with_action = nn.LayerNorm()(x_with_action)
+        x_with_action = nn.swish(x_with_action)
+        x_with_action = nn.Dense(self.rep_size, kernel_init=lecun_uniform, bias_init=bias_init)(x_with_action)
+        
+        # Output: (batch_size, action_size, rep_size)
+        return x_with_action
 
+
+
+# class SA_encoder(nn.Module):
+#     """
+#     State-Action encoder that takes (state, action_onehot) as input.
+#     This is the KEY CHANGE - action flows through all layers like in SAC.
+    
+#     Input: state (obs_dim) + action_onehot (action_size)
+#     Output: Single representation (rep_size)
+#     """
+#     rep_size: int
+#     action_size: int
+#     norm_type: str = "layer_norm"
+#     @nn.compact
+#     def __call__(self, x: jnp.ndarray):
+#         """
+#         Args:
+#             s: state, shape (batch, obs_dim)
+#         Returns:
+#             representation, shape (batch, rep_size)
+#         """
+#         lecun_uniform = variance_scaling(1/3, "fan_in", "uniform")
+#         bias_init = nn.initializers.zeros
+        
+#         if self.norm_type == "layer_norm":
+#             normalize = lambda x: nn.LayerNorm()(x)
+#         else:
+#             normalize = lambda x: x
+
+#         # Concatenate state and action - action flows through ALL layers
+        
+#         x = nn.Dense(1024, kernel_init=lecun_uniform, bias_init=bias_init)(x)
+#         x = normalize(x)
+#         x = nn.swish(x)
+#         x = nn.Dense(1024, kernel_init=lecun_uniform, bias_init=bias_init)(x)
+#         x = normalize(x)
+#         x = nn.swish(x)
+#         x = nn.Dense(1024, kernel_init=lecun_uniform, bias_init=bias_init)(x)
+#         x = normalize(x)
+#         x = nn.swish(x)
+#         x = nn.Dense(1024, kernel_init=lecun_uniform, bias_init=bias_init)(x)
+#         x = normalize(x)
+#         x = nn.swish(x)
+#         # Single output representation
+#         x = nn.Dense(self.rep_size * self.action_size, kernel_init=lecun_uniform, bias_init=bias_init)(x)
+#         # reshape to (batch, action_size, rep_size)
+#         x = jnp.reshape(x, (-1, self.action_size, self.rep_size))
+#         return x
 
 class G_encoder(nn.Module):
     """Goal encoder with LayerNorm."""
@@ -274,12 +352,8 @@ if __name__ == "__main__":
     crtc_params = load_params(args.load_path) if args.load_path else None
 
     # Network setup
-    sa_encoder = SA_encoder(rep_size=args.rep_size)
-    sa_encoder_params = sa_encoder.init(
-        sa_key, 
-        np.ones([1, args.obs_dim]),
-        np.ones([1, action_size])
-    )
+    sa_encoder = SA_encoder(action_size=action_size, rep_size=args.rep_size)
+    sa_encoder_params = sa_encoder.init(sa_key, np.ones([1, args.obs_dim]))
     
     g_encoder = G_encoder(rep_size=args.rep_size)
     g_encoder_params = g_encoder.init(g_key, np.ones([1, args.goal_end_idx - args.goal_start_idx]))
@@ -311,26 +385,25 @@ if __name__ == "__main__":
     )
 
     def compute_q_values(critic_params, obs, goal):
-        """Compute Q-values for all actions."""
+        """
+        Compute Q-values for all actions given state and goal.
+        Returns logits of shape (batch, action_size)
+        """
         sa_encoder_params = critic_params["sa_encoder"]
         g_encoder_params = critic_params["g_encoder"]
         
-        batch_size = obs.shape[0]
+        # Get state representations for all actions: (batch, action_size, rep_size)
+        s_repr = sa_encoder.apply(sa_encoder_params, obs)
+        s_repr = s_repr.reshape(-1, action_size, args.rep_size)
+        
+        # Get goal representation: (batch, rep_size) -> (batch, 1, rep_size)
         g_repr = g_encoder.apply(g_encoder_params, goal)
+        g_repr = g_repr[:, None, :]
         
-        def compute_q_for_action(action_idx):
-            a_onehot = jax.nn.one_hot(
-                jnp.full(batch_size, action_idx), 
-                action_size
-            )
-            sa_repr = sa_encoder.apply(sa_encoder_params, obs, a_onehot)
-            q = -jnp.sqrt(jnp.sum((sa_repr - g_repr) ** 2, axis=-1))
-            return q
-        
-        q_values = jax.vmap(compute_q_for_action)(jnp.arange(action_size))
-        q_values = q_values.T
-        
-        return q_values
+        # Compute negative L2 distance as Q-values: (batch, action_size)
+        logits = -jnp.sqrt(jnp.sum((s_repr - g_repr) ** 2, axis=-1))
+
+        return logits
 
     def get_action_params(training_state):
         """Get params to use for action selection."""
@@ -430,11 +503,17 @@ if __name__ == "__main__":
             sa_encoder_params, g_encoder_params = critic_params["sa_encoder"], critic_params["g_encoder"]
             
             obs = transitions.observation[:, :args.obs_dim]
-            action = transitions.action
+            action = transitions.action  # Discrete action indices
             goal = transitions.observation[:, args.obs_dim:]
             
-            action_onehot = jax.nn.one_hot(action, action_size)
-            sa_repr = sa_encoder.apply(sa_encoder_params, obs, action_onehot)
+            # Get state representations for all actions: (batch, action_size, rep_size)
+            sa_repr_all = sa_encoder.apply(sa_encoder_params, obs)
+            sa_repr_all = sa_repr_all.reshape(-1, action_size, args.rep_size)
+            
+            # Select the representation for the taken action: (batch, rep_size)
+            sa_repr = sa_repr_all[jnp.arange(sa_repr_all.shape[0]), action, :]
+            
+            # Get goal representation
             g_repr = g_encoder.apply(g_encoder_params, goal)
             
             # InfoNCE loss
