@@ -1,0 +1,38 @@
+# --- CRL System Config (Direct port from original ICRL) ---
+# This is a direct port of the working ICRL implementation from gc-marl-ued
+
+# Seed
+seed: 1
+
+# Training steps
+total_env_steps: 50_000_000
+num_epochs: 500
+num_envs: 256
+num_eval_envs: 64
+
+# Episode configuration
+episode_length: 101
+unroll_length: 62
+
+# Learning rates
+actor_lr: 3e-4
+critic_lr: 3e-4
+alpha_lr: 3e-4
+
+# Buffer
+max_replay_size: 5000
+min_replay_size: 1000
+
+# Training
+batch_size: 256
+gamma: 0.99
+logsumexp_penalty_coeff: 0.1
+
+# Environment
+smax_map_name: "2s3z"
+discrete_actions: false  # Note: set at runtime in original code
+
+# Tracking
+track: false  # Use Mava's neptune logger instead
+checkpoint: false
+

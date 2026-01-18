@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=https://instadeep.aichor.ai/schema/latest/manifest.schema.json
+
+kind: AIchorManifest
+apiVersion: 0.2.2
+
+builder:
+  image: genrl-mara-autocurricula
+  dockerfile: Dockerfile
+  context: .
+  buildArgs:
+    USE_CUDA: "true"
+
+spec:
+  operator: jax
+  image: genrl-mara-autocurricula
+  command: ./run.sh
+  debug:
+    vscode:
+        enabled: false # required
+        path: "/aichor/code" # Optional, defaults to "code". Refer the absolute path of the binary if not findable in $PATH
+        provider: "github"
+  types:
+    worker:
+      count: 1
+      resources:
+        accelerators:
+          gpu:
+            count: 1
+            # Quadro-RTX-4000 | Tesla-V100-SXM3-32GB | NVIDIA-A100-SXM4-80GB-MIG-3g.40gb | NVIDIA-A100-SXM4-40GB | NVIDIA-A100-SXM4-80GB
+            product: NVIDIA-A100-SXM4-80GB-MIG-3g.40gb
+            type: gpu
+        cpus: 4
+        ramRatio: 20

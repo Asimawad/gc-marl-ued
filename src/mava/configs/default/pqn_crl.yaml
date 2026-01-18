@@ -1,0 +1,11 @@
+defaults:
+  - _self_
+  - logger: logger
+  - arch: anakin
+  - system: icrl/pqn_crl
+  - network: pqn_crl
+  - env: vector-connector  # [mpe, smax, vector-connector]
+
+hydra:
+  searchpath:
+    - file://mava/configs

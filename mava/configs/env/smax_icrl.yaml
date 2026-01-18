@@ -1,0 +1,19 @@
+# @package _global_
+
+env_name: Smax
+scenario:
+  name: SMAX
+  task_name: 3s_vs_5z
+
+kwargs:
+  see_enemy_actions: true
+  walls_cause_death: true
+
+implicit_agent_id: false
+
+# ICRL-specific settings
+icrl:
+  obs_dim: 48  # Base SMAX observation size (depends on map)
+  goal_dim: 2  # [sum_enemy_health, placeholder]
+  goal_start_idx: 48
+  goal_end_idx: 50

@@ -1,0 +1,27 @@
+# CRL System Configuration (Direct port of working ICRL)
+
+system:
+  seed: 2
+  total_env_steps: 10_000_000
+  num_epochs: 500
+  num_envs: 256
+  num_eval_envs: 64
+  episode_length: 101
+  unroll_length: 62
+  actor_lr: 3e-4
+  critic_lr: 3e-4
+  alpha_lr: 3e-4
+  max_replay_size: 5000
+  min_replay_size: 1000
+  batch_size: 256
+  gamma: 0.99
+  logsumexp_penalty_coeff: 0.1
+  smax_map_name: "2s3z"
+  discrete_actions: false
+  checkpoint: false
+  
+  # Neptune logging
+  use_neptune: true
+  neptune_project: "InstaDeep/ssued"
+  neptune_tags: "crl,smax,original,seed2"
+

@@ -1,0 +1,79 @@
+# SAC-CRL Configuration for SMAX environments
+defaults:
+  - _self_
+  - logger: logger
+  - arch: anakin
+  - env: smax  
+
+hydra:
+  searchpath:
+    - file://mava/configs
+
+# Environment Configuration Overrides
+env:
+  # Episode length 
+  time_limit: 101
+
+# Architecture Configuration 
+arch:
+  # Number of parallel environments for training
+  num_envs: 256
+  
+  # Evaluation settings
+  num_eval_envs: 256
+  num_evaluation: 122  # Number of evaluation checkpoints
+  num_eval_episodes: 256
+  num_absolute_metric_eval_episodes: 512
+  absolute_metric: False
+  evaluation_greedy: True
+
+
+system:
+  # Seed
+  seed: 1
+  
+  # Total training steps
+  total_timesteps: 250_000_000  # 50M total timesteps (from working script)
+  num_updates: ~  # Will be calculated from total_timesteps
+  
+  # Batch configuration
+  update_batch_size: 1
+  
+  # Rollout and batch sizes 
+  rollout_length: 100  # unroll_length from working script
+  batch_size: 256  # Mini-batch size for training
+  
+  # Learning rates
+  actor_lr: 3e-4  # Actor network learning rate
+  q_lr: 3e-4  # Critic (encoders) learning rate
+  alpha_lr: 3e-4  # Alpha (temperature) learning rate
+  max_grad_norm: 10.0  # Gradient clipping (not used in working script but good practice)
+  
+  # Discount factor
+  gamma: 0.99
+  
+  # Entropy tuning
+  target_entropy: ~  # Will be set to -0.5 * action_size at runtime
+  
+  # Replay buffer configuration
+  max_replay_size: 5000  # Maximum number of trajectories in buffer
+  min_replay_size: 1000  # Minimum trajectories before training starts
+  
+  # Representation size
+  rep_size: 64
+  
+  # InfoNCE loss configuration
+  logsumexp_penalty_coeff: 0.1
+  
+  # Action type
+  discrete_actions: False  # Use continuous actions with Gumbel noise for SMAX
+  
+  # These will be filled at runtime based on environment
+  obs_dim: ~
+  goal_start_idx: ~
+  goal_end_idx: ~
+  num_agents: ~
+  action_size: ~
+  
+  # Temperature (not used in SAC-CRL but kept for compatibility)
+  temperature: 0.1

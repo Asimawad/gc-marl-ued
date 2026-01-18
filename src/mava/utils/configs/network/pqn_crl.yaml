@@ -1,0 +1,16 @@
+# ---MLP Networks---
+sa_encoder_network:
+  pre_torso:
+    _target_: mava.networks.torsos.MLPTorso
+    layer_sizes: [512, 512, 512, 512]  # 4 layers
+    use_layer_norm: true
+    activation: swish
+    activate_final: true
+
+goal_encoder_network:
+  pre_torso:
+    _target_: mava.networks.torsos.MLPTorso
+    layer_sizes: [512, 512, 512, 512]  # 4 layers
+    use_layer_norm: true
+    activation: swish
+    activate_final: true

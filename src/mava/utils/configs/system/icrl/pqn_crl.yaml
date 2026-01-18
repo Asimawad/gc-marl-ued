@@ -1,0 +1,57 @@
+# --- Pure CRL System Config ---
+# Simpler than DQN-style: no target network, only InfoNCE loss
+# Matches train_crl.py approach from navix_experiments
+
+# Enable ICRL
+use_icrl: true
+
+# Seed
+total_timesteps: ~ # Set the total environment steps.
+num_updates: 1220 # Number of updates
+seed: 42
+# Training steps
+update_batch_size: 1
+add_agent_id: True
+
+# Environment steps
+rollout_length: 64
+num_epochs: 4
+batch_size: 256
+
+
+# Learning rate (single optimizer for both encoders)
+
+q_lr: 2.5e-4
+
+max_grad_norm: 0.5
+lr_linear_decay: true
+lr_end: 1e-7
+# Algorithm
+gamma: 0.83
+
+# ICRL-specific
+logsumexp_penalty_coeff: 0.91  #
+
+# Representation size (must match between state and goal encoders)
+rep_size: 64
+
+
+# Contrastive learning options
+# Energy function: how to measure similarity between representations
+#   - "norm": Negative L2 distance (default)
+#   - "l2": Negative squared L2 (faster, no sqrt)
+#   - "dot": Dot product (original InfoNCE)
+#   - "cosine": Cosine similarity (normalized)
+energy_fn: "norm"
+
+# Contrastive loss: how to learn from the similarity matrix
+#   - "fwd_infonce": Forward InfoNCE (default) - "which goal did I reach?"
+#   - "bwd_infonce": Backward InfoNCE - "which action reached this goal?"
+#   - "sym_infonce": Symmetric (both directions, often more stable)
+#   - "binary_nce": Binary classification per pair
+contrastive_loss_fn: "fwd_infonce"
+
+
+# Goal configuration
+icrl:
+  goal_type: "distance_per_agent"

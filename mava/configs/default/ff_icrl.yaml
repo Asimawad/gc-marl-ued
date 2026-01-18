@@ -1,0 +1,31 @@
+defaults:
+  - _self_
+  - logger: logger
+  - arch: anakin
+  - network: icrl
+  - system: icrl/ff_icrl
+  - env: smax  # [mpe, smax, vector-connector]
+  - search_space@hydra.sweeper.params: icrl
+  - override hydra/sweeper: optuna
+  - override hydra/sweeper/sampler: tpe
+
+logger:
+  loggers:
+    neptune:
+      enabled: True
+      tag: [sweep, ff-icrl-sweep]  # by default runs with the sweep tag will be cleaned up every ~3 months
+
+hydra:
+  mode: MULTIRUN
+  sweeper:
+    sampler:
+      seed: 42
+    direction: maximize
+    study_name: ff-icrl-study
+    storage: null
+    n_trials: 50
+    n_jobs: 1
+
+  searchpath:
+    - file://mava/configs
+

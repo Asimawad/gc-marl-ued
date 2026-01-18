@@ -1,0 +1,112 @@
+# Configuration for ICRL SMAX training (standalone script)
+# This config is for comparing the original implementation with Mava's version
+
+defaults:
+  - _self_
+
+# Experiment settings
+exp_name: train_icrl_smax
+seed: 1
+track: True  # Enable tracking
+
+# Environment Configuration
+env:
+  env_id: smax
+  smax_map_name: smacv2_5_units  # 2s3z | 3s5z | 5m_vs_6m | 10m_vs_11m | 27m_vs_30m | 3s5z_vs_3s6z | 3s_vs_5z | 6h_vs_8z | smacv2_5_units | smacv2_10_units | smacv2_20_units
+  episode_length: 101
+  
+  # These will be filled at runtime
+  obs_dim: ~
+  goal_start_idx: ~
+  goal_end_idx: ~
+  num_agents: ~
+  discrete_actions: False
+
+# Training Configuration
+system:
+  # Total training
+  total_env_steps: 250_000_000  # 250M timesteps
+  num_epochs: 500
+  
+  # Parallel environments
+  num_envs: 256
+  num_eval_envs: 256
+  
+  # Learning rates
+  actor_lr: 3e-4
+  critic_lr: 3e-4
+  alpha_lr: 3e-4
+  
+  # Batch configuration
+  batch_size: 256
+  unroll_length: 62  # Rollout length per environment
+  
+  # Discount factor
+  gamma: 0.99
+  
+  # Contrastive learning
+  logsumexp_penalty_coeff: 0.1
+  
+  # Replay buffer
+  max_replay_size: 5000  # Maximum trajectories in buffer
+  min_replay_size: 1000  # Minimum before training starts
+  
+  # Computed at runtime
+  env_steps_per_actor_step: ~  # num_envs * unroll_length
+  num_prefill_env_steps: ~
+  num_prefill_actor_steps: ~
+  num_training_steps_per_epoch: ~
+  num_envs_agents: ~  # num_envs * num_agents
+
+# Checkpointing
+checkpoint:
+  enabled: False
+  load_path: ""  # Path to load checkpoint from
+
+# Logger Configuration
+logger:
+  base_exp_path: results/
+  system_name: icrl_smax
+  
+  loggers:
+    console:
+      _target_: mava.utils.logger.ConsoleLogger
+      enabled: True
+    
+    neptune:
+      _target_: mava.utils.logger.NeptuneLogger
+      enabled: False  # Set to True to enable Neptune logging
+      run_id: ~
+      project: Instadeep/ssued  # Change to your Neptune project
+      tag: [icrl_standalone, smax]
+      group_tag: [icrl_reproduction]
+      detailed_logging: False
+      architecture_name: anakin
+      upload_json_data: False
+    
+    json:
+      _target_: mava.utils.logger.JsonLogger
+      enabled: False
+      path: ~
+      task_name: ${env.smax_map_name}
+      env_name: ${env.env_id}
+      seed: ${seed}
+    
+    tensorboard:
+      _target_: mava.utils.logger.TensorboardLogger
+      enabled: False
+  
+  checkpointing:
+    save_model: ${checkpoint.enabled}
+    save_args:
+      save_interval_steps: 10
+      max_to_keep: 3
+      keep_period: ~
+      checkpoint_uid: ~
+      rel_dir: checkpoints
+    
+    load_model: False
+    load_args:
+      checkpoint_uid: ""
+      rel_dir: checkpoints
+

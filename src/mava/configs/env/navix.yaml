@@ -1,0 +1,14 @@
+# Navix Environment Configuration
+# For goal-conditioned RL in grid-world environments
+
+env_name: gcrl_empty  # Options: gcrl_door_key, gcrl_four_rooms, gcrl_empty
+scenario: ~
+
+# Grid dimensions for the environment
+grid_shape: [16, 16]  # Height, Width
+
+# Episode length
+time_limit: 100
+
+# Navix environments are single-agent
+num_agents: 1

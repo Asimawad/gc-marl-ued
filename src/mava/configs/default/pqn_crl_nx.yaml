@@ -1,0 +1,71 @@
+
+defaults:
+  - logger: logger
+  - arch: anakin
+  - env: navix
+  - _self_
+
+hydra:
+  searchpath:
+    - file://mava/configs
+
+logger:
+  loggers:
+    json:
+      task_name: ${env.env_name}
+
+# ============================================================================
+# Environment Configuration Overrides
+# ============================================================================
+env:
+  env_name: gcrl_door_key  # Options: gcrl_door_key, gcrl_four_rooms, gcrl_empty
+  grid_shape: [16, 16]  # Grid dimensions (H, W)
+  time_limit: 100
+
+# ============================================================================
+# System Configuration (matching exploration/navix_experiments/train_crl.py)
+# ============================================================================
+system:
+  # Seed
+  seed: 1
+
+  # Total training steps
+  total_timesteps: 500_000_000  # 150M timesteps 
+  num_updates: ~  # Will be calculated from total_timesteps
+
+  # Batch configuration
+  update_batch_size: 1
+
+  # Rollout and batch sizes
+  rollout_length: 100  # Unroll length for collecting experience
+  batch_size: 256  # Mini-batch size for SGD updates 
+
+  # Learning rate and optimizer
+  q_lr: 3e-4  # Learning rate for critic (sa_encoder + g_encoder)
+  max_grad_norm: 10.0  # Gradient clipping
+
+  # Discount factor for HER goal relabeling
+  gamma: 0.99
+
+  # Temperature for Boltzmann exploration
+  temperature: 0.1  # Lower = more greedy, higher = more exploration
+  
+  # Epsilon-greedy exploration (ensures agent explores even with bad Q-values)
+  epsilon: 0.1  # Probability of taking random action during training
+
+  # Target network for stability (optional)
+  use_target_network: true  # Original script doesn't use target networks
+  target_tau: 0.001  # Soft update coefficient (if use_target_network=true)
+
+  # Representation size for encoders
+  rep_size: 64  # Dimension of learned representations
+
+  # InfoNCE loss configuration
+  logsumexp_penalty_coeff: 0.1  # Regularization on logsumexp
+
+  # Grid dimensions (will be set from env config)
+  grid_shape: ${env.grid_shape}
+
+  # These will be filled at runtime by learner_setup
+  obs_size: ~  # Grid size (H * W * C) - used for compatibility, obs are grids
+  action_size: ~  # Number of discrete actions

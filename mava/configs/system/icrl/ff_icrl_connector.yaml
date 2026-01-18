@@ -1,0 +1,72 @@
+# --- FF-ICRL System Config for Connector ---
+# Standalone config for Connector environment (no inheritance to avoid Hydra path issues)
+
+# Enable ICRL
+use_icrl: true
+# --- Network Architecture Config ---
+# Define configurable network architectures using Mava's modular torso system
+
+
+# Seed
+total_timesteps: ~ # Set the total environment steps.
+num_updates: 1220 # Number of updates
+seed: 42
+# Training steps
+explore_steps: 2000  # Connector-specific: less exploration needed
+update_batch_size: 1
+add_agent_id: True
+num_eval_envs: 32
+# num_evaluation: 244
+# Environment steps (Connector-specific)
+rollout_length: 128 # Number of environment steps per vectorised environment.
+eval_rollout_length: 128
+episode_length: 129 # (MATCHED TO WORKING IMPLEMENTATION)
+epochs: 1
+policy_update_delay: 1
+
+# Buffer (Connector-specific)
+buffer_size: 10000  # Smaller buffer for smaller problem
+batch_size: 256
+
+num_minibatches: 1 # Number of minibatches per ppo epoch.
+
+# Learning rates
+policy_lr: 3e-4
+q_lr: 3e-4
+alpha_lr: 3e-4
+max_grad_norm: 0.5
+
+# Algorithm
+tau: 0.005
+gamma: 0.99
+
+# Entropy tuning
+autotune: true
+target_entropy_scale: 0.5
+init_alpha: 0.1
+
+# ICRL-specific
+logsumexp_penalty_coeff: 0.1
+discrete_actions: false  # Use Gumbel-Softmax for discrete actions
+
+goal_sampling:
+  gamma_discount: 0.99
+  use_future_mask: true
+
+# ICRL parameters for Connector
+# NOTE: These values are computed dynamically in make_env.py from the environment
+# and overwritten at runtime. They are provided here as documentation only.
+icrl:
+  learnable_temperature: true
+  
+  # Goal type for Connector (choose one):
+  # - "manhattan_distance": Use total Manhattan distance from all agents to their targets (more detailed)
+  # - "ratio_connected": Use ratio of connected agents (simpler, directly from env metric)
+  goal_type: "manhattan_distance"  # CHANGED: manhattan_distance provides better goal variance than ratio_connected
+  
+  # Example values for 5x5 grid (will be overwritten):
+  obs_dim: null  # Will be set to 125 for 5x5 grid (5*5*5 channels)
+  goal_dim: null  # Will be set to 2
+  goal_start_idx: null  # Will be set to 125
+  goal_end_idx: null  # Will be set to 126
+

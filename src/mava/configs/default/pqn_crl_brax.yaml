@@ -1,0 +1,69 @@
+
+defaults:
+  - _self_
+  - logger: logger
+  - arch: anakin
+  - env: smax  
+
+hydra:
+  searchpath:
+    - file://mava/configs
+
+# Environment Configuration Overrides
+env:
+  # Episode length 
+  time_limit: 101
+
+# Architecture Configuration 
+arch:
+  # Match working script's num_envs for fair comparison
+  num_envs: 512
+  
+  # Evaluation settings
+  num_eval_envs: 256
+  num_evaluation: 122
+  num_eval_episodes: 256
+  num_absolute_metric_eval_episodes: 512
+  absolute_metric: True
+  evaluation_greedy: True
+
+
+system:
+  # Seed
+  seed: 42
+  
+  # Total training steps
+  total_timesteps: 500_000_000
+  num_updates: ~  # Will be calculated from total_timesteps
+  
+  # Batch configuration
+  update_batch_size: 1
+  
+  # Rollout and batch sizes 
+  rollout_length: 62  # unroll_length 
+  batch_size: 256  # Mini-batch size for training
+  
+  # Learning rate and optimizer
+  q_lr: 3e-4  # critic_lr 
+  max_grad_norm: 1.0  # Gradient clipping
+  
+  # Discount factor
+  gamma: 0.99
+  
+  temperature: 0.05
+  
+  # Target network for stability
+  use_target_network: true
+  target_tau: 0.001
+  
+  # Representation size
+  rep_size: 64
+  
+  # InfoNCE loss configuration
+  logsumexp_penalty_coeff: 0.1
+  
+  obs_dim: ~
+  goal_start_idx: ~
+  goal_end_idx: ~
+  num_agents: ~
+  action_size: ~

@@ -1,0 +1,71 @@
+# --- FF-ICRL System Config ---
+# This extends SAC with ICRL-specific settings
+
+# Enable ICRL
+use_icrl: true
+
+# Use original ICRL environment (via Brax adapter)
+# Set to true to use the battle-tested ICRL environment from gc-marl-ued
+# Set to false to use the native Mava wrapper (default)
+use_original_icrl_env: false  # Keep native wrapper, fix won_episode tracking
+
+# Seed
+seed: 42
+
+# Training steps
+total_timesteps: 128_000_000  # From args.total_env_steps (MATCHED TO WORKING IMPLEMENTATION)
+num_updates: ~  # Derived from total_timesteps
+explore_steps: 1000  # From args.min_replay_size (will prefill this many)
+update_batch_size: 1
+add_agent_id: false
+# Environment steps
+rollout_length: 62  # From args.unroll_length (MATCHED TO WORKING IMPLEMENTATION)
+episode_length: 101  # (MATCHED TO WORKING IMPLEMENTATION)
+epochs: 1  # From args.num_epochs
+policy_update_delay: 1
+
+# Buffer
+buffer_size: 5000  # Reduced from 10000 to fit in TPU memory
+batch_size: 256  # From args.batch_size (MATCHED TO WORKING IMPLEMENTATION)
+
+# Learning rates
+policy_lr: 3e-4  # From args.actor_lr
+q_lr: 3e-4  # From args.critic_lr (for encoders)
+alpha_lr: 3e-4
+max_grad_norm: 1
+
+# Algorithm
+tau: 0.005  # Not used in ICRL (no target networks)
+gamma: 0.99
+
+# Entropy tuning
+autotune: false
+target_entropy_scale: 0.05  # Target 30% of maximum entropy 
+init_alpha: 0.1  # Higher initial alpha for more exploration
+use_adaptive_target_entropy: false  # Adjust target based on available actions (accounts for masking)
+
+# ICRL-specific
+logsumexp_penalty_coeff: 0.1  # From args
+discrete_actions: false  # CRITICAL: Match CRL - use Gumbel-Softmax for SMAX
+
+goal_sampling:
+  gamma_discount: 0.99  # Probability decay for future states
+  use_future_mask: true  # Only sample from future timesteps
+
+icrl:
+  learnable_temperature: false  # Whether to learn alpha
+  
+  # NOTE: These dimensions are computed dynamically in make_env.py from the environment
+  # and overwritten at runtime. They are provided here as documentation only.
+  
+  # Dimensions (computed dynamically from environment):
+  # obs_dim: base observation dimension from SMAX environment (e.g., 127 for 2s3z)
+  # goal_dim: always 2 ([current_sum_enemy_health, ultimate_goal=0.0])
+  # goal_start_idx: where goal starts in observation (= obs_dim)
+  # goal_end_idx: where to slice for hindsight relabeling (= obs_dim + 1, only first dim)
+  
+  # Example values for 2s3z map (will be overwritten):
+  obs_dim: null  # Will be set to 127 for 2s3z
+  goal_dim: null  # Will be set to 2
+  goal_start_idx: null  # Will be set to 127
+  goal_end_idx: null  # Will be set to 128

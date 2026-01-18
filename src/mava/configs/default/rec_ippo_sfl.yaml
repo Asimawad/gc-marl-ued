@@ -1,0 +1,62 @@
+defaults:
+  - logger: logger
+  - arch: anakin
+  - system: ppo/rec_ippo
+  - network: rnn # [rnn, rcnn]
+  - env: vector-connector # [cleaner, connector, vector-connector, gigastep, lbf, mabrax, matrax, rware, smax, mpe]
+  - _self_
+
+hydra:
+  searchpath:
+    - file://mava/configs
+
+ued:
+  batch_size: 16384
+  num_batches: 1
+  rollout_steps: 1000
+  num_to_save: 1024
+  sampling_ratio: 0.5
+  max_episodes: 100
+
+arch:
+  num_envs: 128
+  num_evaluation: 200
+  absolute_metric: False
+  num_eval_episodes: 4
+  num_eval_instances: 1024
+  num_eval_parallel_per_device: 4096
+
+system:
+  # num_updates: 3400
+  num_updates: 10000
+  rollout_length: 256
+  num_minibatches: 8
+  clip_eps: 0.05
+  ent_coef: 0.0
+  update_batch_size: 1
+  max_grad_norm: 10
+  recurrent_chunk_size: 8
+  critic_lr: 5e-4
+  gamma: 0.99
+  decay_learning_rates: True
+
+
+logger:
+  loggers:
+    neptune:
+      enabled: True
+      tag: [sfl, vector-connector, new_infra]
+
+env:
+  generator: stochastic
+  reward_fn: complete_sparse
+  scenario:
+    name: Connector-v3
+    task_name: con-10x10x10a
+
+    task_config:
+      grid_size: 10
+      num_agents: 10
+
+    env_kwargs:
+      time_limit: 100

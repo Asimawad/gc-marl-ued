@@ -1,0 +1,10 @@
+# Defaults for CRL system (direct port of working ICRL)
+defaults:
+  - system: crl/ff_crl
+  - override hydra/launcher: joblib
+  - _self_
+
+hydra:
+  run:
+    dir: ./results/${now:%Y-%m-%d}/${now:%H-%M-%S}_${logger.system_name}
+

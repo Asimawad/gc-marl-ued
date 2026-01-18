@@ -53,7 +53,7 @@ class Args:
 
     # Environment specific arguments
     env_id: str = "smax"
-    smax_map_name: str = "2s3z"
+    smax_map_name: str = "smacv2_5_units"
     episode_length: int = 101
     
     # To be filled in runtime
@@ -78,10 +78,11 @@ class Args:
     target_tau: float = 0.005
 
     # Learned temperature parameters (like SAC's alpha)
-    temperature_lr: float = 3e-4
-    initial_temperature: float = 0.3
-    min_temperature: float = 0.01
-    target_entropy_ratio: float = 0.1
+    temperature_lr: float = 1e-4  # Lower LR for stability (was 3e-4)
+    initial_temperature: float = 0.9
+    min_temperature: float = 0.1
+    max_temperature: float = 1.0  # Prevent unbounded growth
+    target_entropy_ratio: float = 0.9
 
     max_replay_size: int = 5000
     min_replay_size: int = 1000
@@ -397,7 +398,7 @@ if __name__ == "__main__":
         
         return q_values
 
-    def deterministic_actor_step(training_state, env, env_state, extra_fields):
+    def deterministic_actor_step(training_state, env, env_state, extra_fields, key=None):
         """Evaluation step - greedy action selection."""
         obs = jnp.reshape(env_state.obs, (-1,) + env_state.obs.shape[2:])
         
@@ -411,7 +412,7 @@ if __name__ == "__main__":
         logits = logits - ((1 - avail_actions) * 1e10)
         
         actions = jnp.argmax(logits, axis=-1)
-        
+        # actions = jax.random.categorical(key, logits/0.05 , axis=-1) if key is not None else actions
         actions_ = jnp.reshape(actions, (-1, args.num_agents))
         nstate = env.step(env_state, actions_)
         
@@ -576,19 +577,25 @@ if __name__ == "__main__":
             
             log_policy = jnp.log(policy + 1e-8)
             entropy = -jnp.sum(policy * log_policy * avail_actions, axis=-1)
-            
-            temp_loss = log_temperature * jnp.mean(entropy - target_entropy)
-            
+
+            # SAC-style temperature loss: treat measured entropy as constant
+            # CRITICAL: stop_gradient prevents backprop through entropy computation
+            # If entropy < target: loss is negative → log_temp increases
+            # If entropy > target: loss is positive → log_temp decreases
+            temp_loss = log_temperature * jax.lax.stop_gradient(jnp.mean(entropy - target_entropy))
+
             return temp_loss, entropy
         
         (temp_loss, entropy), temp_grad = jax.value_and_grad(temperature_loss, has_aux=True)(
             training_state.temperature_state.params, transitions
         )
         new_temperature_state = training_state.temperature_state.apply_gradients(grads=temp_grad)
-        
-        clamped_log_temp = jnp.maximum(
-            new_temperature_state.params["log_temperature"], 
-            jnp.log(args.min_temperature)
+
+        # Clip temperature to [min_temperature, max_temperature] range
+        clamped_log_temp = jnp.clip(
+            new_temperature_state.params["log_temperature"],
+            jnp.log(args.min_temperature),
+            jnp.log(args.max_temperature)
         )
         new_temperature_state = new_temperature_state.replace(
             params={"log_temperature": clamped_log_temp}

@@ -41,7 +41,7 @@ from buffer import TrajectoryUniformSamplingQueue
 @dataclass
 class Args:
     exp_name: str = "pqn_smax"
-    seed: int = 1
+    seed: int = 69
     torch_deterministic: bool = True
     cuda: bool = True
     track: bool = False
@@ -83,10 +83,10 @@ class Args:
     target_tau: float = 0.001  # Slower target updates for stability (was 0.005)
 
     # Temperature for exploration
-    temperature: float = 0.0375  # Fixed temperature (like your working config)
+    temperature: float = 0.05  # Fixed temperature (like your working config)
 
     # PQN specific: how many env steps to collect before each training update
-    unroll_length: int = 62  # Shorter unrolls, more frequent updates
+    unroll_length: int = 100  # Shorter unrolls, more frequent updates
     
     # Number of training epochs per collected batch
     num_updates_per_batch: int = 1  # Usually 1 for PQN (on-policy-ish)
@@ -339,7 +339,7 @@ if __name__ == "__main__":
         else:
             return training_state.critic_state.params
 
-    def deterministic_actor_step(training_state, env, env_state, extra_fields):
+    def deterministic_actor_step(training_state, env, env_state, extra_fields, key=None):
         """Evaluation step - greedy action selection."""
         obs = jnp.reshape(env_state.obs, (-1,) + env_state.obs.shape[2:])
         
@@ -352,8 +352,8 @@ if __name__ == "__main__":
         avail_actions = jnp.reshape(avail_actions, (-1,) + avail_actions.shape[2:])
         logits = logits - ((1 - avail_actions) * 1e10)
         
-        actions = jnp.argmax(logits, axis=-1)
-        
+        # actions = jnp.argmax(logits, axis=-1)
+        actions= jax.random.categorical(key, logits / args.temperature, axis=-1)
         actions_ = jnp.reshape(actions, (-1, args.num_agents))
         nstate = env.step(env_state, actions_)
         

@@ -291,15 +291,6 @@ if __name__ == "__main__":
         args.num_agents = env.env.num_agents
         args.num_envs_agents = args.num_envs * args.num_agents
     
-    elif args.env_id == "push_marl":
-        from envs.mpe_push_LLM import PushMPEMARL
-        env = PushMPEMARL()
-        args.obs_dim = 6  # vel(2) + landmark_pos(4)
-        args.goal_start_idx = 6  # target position starts after obs
-        args.goal_end_idx = 8   # target is 2D position
-        args.num_agents = env.env.num_agents
-        args.num_envs_agents = args.num_envs * args.num_agents
-
     elif args.env_id == "mpe_tag":
         from envs.mpe_tag import MPETagCoop
         env = MPETagCoop()
@@ -465,7 +456,7 @@ if __name__ == "__main__":
 
     #modified to have extra dimension for multiple agents
     #modified to sample from categorical distribution
-    def deterministic_actor_step(training_state, env, env_state, extra_fields):
+    def deterministic_actor_step(training_state, env, env_state, extra_fields, key=None):
         obs = jnp.reshape(env_state.obs, (-1,) + env_state.obs.shape[2:])
         means, _ = actor.apply(training_state.actor_state.params, obs)
         action = None

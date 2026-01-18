@@ -1,0 +1,5 @@
+# system.policy_lr: tag(log, interval( 5e-5,1e-3))
+# system.autotune: choice(True, False)
+system.init_alpha: range(0.01,1.0, 0.05)
+# system.target_entropy_scale: range(0.01,0.5, 0.01)
+
